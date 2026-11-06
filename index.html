@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Digital Twin Smart AC</title>
+<style>
+*{box-sizing:border-box}
+:root{color-scheme:light dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f4f6f8;--card:#fff;--text:#14212b;--muted:#5b6b78;--line:#dde3e8;--accent:#0f8b8d;--ok:#2e9e5b;--warn:#d64545;--wall:#eaf0f5;--floor:#cfd8df;--acbody:#fdfefe;--acline:#b9c4cd;--node:#cdeeed}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e151b;--card:#162029;--text:#e7eef3;--muted:#93a4b1;--line:#263642;--accent:#3cc3c5;--ok:#4cc783;--warn:#ff6b6b;--wall:#1a2630;--floor:#23323d;--acbody:#e9eef2;--acline:#8798a5;--node:#17494a}}
+:root[data-theme="dark"]{--bg:#0e151b;--card:#162029;--text:#e7eef3;--muted:#93a4b1;--line:#263642;--accent:#3cc3c5;--ok:#4cc783;--warn:#ff6b6b;--wall:#1a2630;--floor:#23323d;--acbody:#e9eef2;--acline:#8798a5;--node:#17494a}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:16px}
+header{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+h1{font-size:20px;margin:0}
+.badge{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--muted)}
+.badge.ok{color:var(--ok);border-color:var(--ok)}
+.badge.bad{color:var(--warn);border-color:var(--warn)}
+.grid{display:grid;gap:12px;grid-template-columns:1.5fr 1fr}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.full{grid-column:1/-1}
+.twin svg{width:100%;height:auto;display:block}
+.alert,.toast{color:#fff;padding:10px 14px;border-radius:10px;margin-bottom:12px}
+.alert{background:var(--warn)}
+.toast{background:var(--accent);color:#06211f}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px}
+.stat{border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.stat b{display:block;font-size:20px}
+.stat span{font-size:12px;color:var(--muted)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+button,select,input{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 12px;max-width:100%}
+button{cursor:pointer}
+button.primary{background:var(--accent);color:#06211f;border-color:var(--accent);font-weight:600}
+label{font-size:13px;color:var(--muted);display:block}
+.cfg{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+summary{cursor:pointer;font-weight:600}
+.note{font-size:12px;color:var(--muted);margin:6px 0 0}
+svg text{font-family:inherit}
+.wall{fill:var(--wall)}.floor{fill:var(--floor)}
+.acb{fill:var(--acbody);stroke:var(--acline)}.slot,.flap{fill:var(--acline)}
+.node{fill:var(--node);stroke:var(--accent)}.sens{fill:var(--card);stroke:var(--accent)}
+.lbl{font-size:11px;fill:var(--muted)}.tg{font-size:20px;font-weight:700;fill:var(--text);text-anchor:middle}
+.dsp{fill:#10222b}.dtx{font-size:15px;font-weight:700;fill:#7ff0e6;text-anchor:middle}
+#flow,#plume{transition:opacity .6s}
+.fl{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-dasharray:6 14;animation:flow var(--fs,1.2s) linear infinite}
+@keyframes flow{to{stroke-dashoffset:-20}}
+.beam{stroke:var(--accent);stroke-width:2;stroke-dasharray:4 6;opacity:0;animation:flow .5s linear infinite}
+.beam.on{opacity:1}
+#flap{transition:transform .5s}
+.chk{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:7px}
+.chk li{display:flex;gap:8px;align-items:baseline;font-size:13px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
+.dot.ok{background:var(--ok)}.dot.bad{background:var(--warn)}.dot.wait{background:#e0a020}
+.log{font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;max-height:190px;overflow:auto;margin:8px 0 0;padding:0;list-style:none}
+.log li{padding:2px 0;border-bottom:1px dashed var(--line)}
+.log .e{color:var(--warn)}.log .t{color:var(--muted)}
+.irb{white-space:pre-wrap;word-break:break-all;font-size:13px;margin:8px 0}
+.map{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.map td,.map th{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left;vertical-align:top}
+.map th{color:var(--muted);font-weight:600}
+.srcv{font-size:14px!important}
+button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
+</head>
+<body>
+<main>
+<header><h1>Digital Twin Smart AC</h1><span id="conn" class="badge">Mode simulasi</span></header>
+<div id="alert" class="alert" hidden></div>
+<div id="toast" class="toast" hidden></div>
+<section class="grid">
+<div class="card twin">
+<svg viewBox="0 0 520 330" role="img" aria-label="Digital twin ruangan dengan AC split Daikin dan node ESP32">
+<rect class="wall" x="8" y="8" width="504" height="290" rx="10"/>
+<rect id="tint" x="8" y="8" width="504" height="290" rx="10" opacity=".25"/>
+<rect class="floor" x="8" y="298" width="504" height="24" rx="6"/>
+<polygon id="plume" points="100,84 316,84 380,292 36,292" opacity="0"/>
+<g id="flow" opacity="0">
+<path class="fl" d="M118 76 C110 140 100 200 92 276"/><path class="fl" d="M164 76 C160 140 150 200 150 276"/>
+<path class="fl" d="M210 76 C210 140 210 200 214 276"/><path class="fl" d="M256 76 C262 140 270 200 282 276"/>
+<path class="fl" d="M302 76 C312 140 330 200 350 276"/>
+</g>
+<rect class="acb" x="80" y="22" width="250" height="60" rx="14"/>
+<rect class="slot" x="96" y="62" width="218" height="10" rx="5"/>
+<rect id="flap" class="flap" x="100" y="66" width="210" height="5" rx="2.5" style="transform-origin:100px 68px"/>
+<circle id="acLed" cx="100" cy="38" r="4"/>
+<text class="lbl" x="112" y="42">DAIKIN FTKC25QVM4</text>
+<rect class="dsp" x="256" y="32" width="56" height="24" rx="6"/>
+<text id="acSet" class="dtx" x="284" y="49">OFF</text>
+<circle cx="322" cy="48" r="4" fill="var(--accent)"/>
+<line id="beam" class="beam" x1="430" y1="170" x2="326" y2="50"/>
+<rect class="node" x="430" y="150" width="64" height="40" rx="8"/>
+<text class="lbl" x="462" y="168" text-anchor="middle">ESP32</text>
+<text class="lbl" x="462" y="182" text-anchor="middle">node</text>
+<circle id="nLed" cx="486" cy="158" r="3" fill="var(--muted)"/>
+<line x1="462" y1="190" x2="462" y2="222" stroke="var(--accent)" stroke-width="1.5"/>
+<rect class="sens" x="440" y="222" width="44" height="28" rx="6"/>
+<text class="lbl" x="462" y="240" text-anchor="middle">DHT22</text>
+<text id="tagT" class="tg" x="462" y="274">--</text>
+<text id="tagH" class="lbl" x="462" y="290" text-anchor="middle"></text>
+</svg>
+<p class="note">Warna ruangan mengikuti suhu terukur. Garis putus-putus dari node ke unit indoor muncul saat perintah IR dikirim.</p>
+</div>
+<div class="card">
+<div class="stats">
+<div class="stat"><b id="sTemp">--</b><span>Suhu ruangan</span></div>
+<div class="stat"><b id="sRh">--</b><span>Kelembapan</span></div>
+<div class="stat"><b id="sAc">OFF</b><span id="sAcL">Status AC (asumsi IR)</span></div>
+<div class="stat"><b id="sSet">24°C</b><span>Setpoint</span></div>
+<div class="stat"><b id="sRssi">--</b><span>Sinyal WiFi</span></div>
+<div class="stat"><b id="sUp">--</b><span>Uptime node</span></div>
+<div class="stat"><b id="sSrc" class="srcv">-</b><span>Perubahan AC terakhir dari</span></div>
+<div class="stat"><b id="sAge">--</b><span>Telemetri terakhir</span></div>
+</div>
+<div class="row"><button id="bPow" class="primary">Nyalakan AC</button><button id="bMinus">-</button><button id="bPlus">+</button></div>
+<div class="row"><select id="selMode"><option>cool</option><option>heat</option><option>dry</option><option>fan</option><option>auto</option></select>
+<select id="selFan"><option>auto</option><option>low</option><option>medium</option><option>high</option></select></div>
+<p class="note" id="acNote">Status AC adalah perintah IR terakhir (IR satu arah). Suhu berasal dari DHT22.</p>
+</div>
+<div class="card"><b>Status integrasi</b>
+<ul class="chk">
+<li id="chkBroker"><span class="dot"></span><span></span></li>
+<li id="chkNode"><span class="dot"></span><span></span></li>
+<li id="chkTele"><span class="dot"></span><span></span></li>
+<li id="chkCfg"><span class="dot"></span><span></span></li>
+<li id="chkSensor"><span class="dot"></span><span></span></li>
+<li id="chkIr"><span class="dot"></span><span></span></li>
+<li id="chkAck"><span class="dot"></span><span></span></li>
+</ul></div>
+<div class="card"><b>Log kejadian</b><ul class="log" id="log"></ul></div>
+<div class="card full"><b>Remote asli (IR RX)</b>
+<div id="irBody" class="irb"></div>
+<div class="row"><button id="bIrUse" hidden></button></div>
+<p class="note">Tekan tombol di remote asli. Node menangkap sinyalnya dan mengirim protokol serta kode ke sini. Jika protokolnya sama dengan "Protokol Daikin" di setting, status AC di twin ikut berubah.</p></div>
+<div class="card full">
+<b>Suhu 90 pembacaan terakhir</b>
+<svg viewBox="0 0 300 60" style="width:100%;height:80px" preserveAspectRatio="none"><path id="sp" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>
+<p class="note">Rentang: <span id="spMin">--</span> sampai <span id="spMax">--</span> °C</p>
+</div>
+<details class="card"><summary>Setting jarak jauh</summary>
+<div class="cfg">
+<div><label>Protokol Daikin</label><select id="cBrand"><option>DAIKIN</option><option>DAIKIN2</option><option>DAIKIN216</option><option>DAIKIN160</option><option>DAIKIN152</option><option>DAIKIN176</option><option>DAIKIN128</option><option>DAIKIN64</option></select></div>
+<div><label>Offset suhu (°C)</label><input id="cOff" type="number" step="0.1"></div>
+<div><label>Alarm suhu tinggi (°C)</label><input id="cHigh" type="number"></div>
+<div><label>Interval kirim (detik)</label><input id="cInt" type="number"></div>
+<div><label>Auto ON di atas (°C)</label><input id="cOn" type="number"></div>
+<div><label>Auto OFF di bawah (°C)</label><input id="cOffT" type="number"></div>
+<div><label>Alarm suhu rendah (°C)</label><input id="cLow" type="number"></div>
+<div><label>Offset kelembapan (%)</label><input id="cRh" type="number" step="0.1"></div>
+<div><label>Jeda minimum on/off otomatis (detik)</label><input id="cMin" type="number"></div>
+</div>
+<div class="row"><label><input id="cAuto" type="checkbox"> Mode otomatis</label><button id="bCfg" class="primary">Kirim setting</button></div>
+</details>
+<details class="card"><summary>Hubungkan ke node (MQTT)</summary>
+<div class="cfg">
+<div><label>URL WebSocket broker</label><input id="mUrl" placeholder="ws://IP_BROKER:9001"></div>
+<div><label>ID perangkat (sama persis dengan DEVICE_ID di firmware)</label><input id="mId" value="AC01"></div>
+<div><label>User</label><input id="mUser"></div>
+<div><label>Password</label><input id="mPass" type="password"></div>
+</div>
+<div class="row"><button id="bConn" class="primary">Hubungkan</button><span id="mMsg" class="note"></span></div>
+<p class="note">Browser tidak bisa memakai port MQTT 1883. Aktifkan listener WebSocket (port 9001) di Mosquitto. Buka halaman ini dari file lokal atau http, karena halaman https memblokir ws://. Tanpa koneksi, halaman berjalan sebagai simulasi.</p>
+</details>
+<details class="card full"><summary>Peta integrasi: tampilan ↔ firmware</summary>
+<table class="map">
+<tr><th>Di tampilan</th><th>Topik MQTT</th><th>Arah</th><th>Di firmware</th></tr>
+<tr><td>Tombol power, suhu, mode, fan</td><td><code>ac/&lt;id&gt;/cmd</code></td><td>twin → node</td><td><code>handleCmd()</code> lalu IR ke AC</td></tr>
+<tr><td>Form Setting jarak jauh</td><td><code>ac/&lt;id&gt;/config/set</code></td><td>twin → node</td><td><code>handleConfigSet()</code> lalu disimpan di NVS</td></tr>
+<tr><td>Suhu, RH, status AC, RSSI, uptime</td><td><code>ac/&lt;id&gt;/telemetry</code></td><td>node → twin</td><td><code>publishTelemetry()</code> tiap interval dan setelah perintah</td></tr>
+<tr><td>Form setting terisi otomatis</td><td><code>ac/&lt;id&gt;/config/state</code> (retained)</td><td>node → twin</td><td><code>publishConfigState()</code></td></tr>
+<tr><td>Badge Node online/offline</td><td><code>ac/&lt;id&gt;/status</code> (retained, LWT)</td><td>node → twin</td><td>Last Will di <code>maintainMqtt()</code></td></tr>
+<tr><td>Banner alarm</td><td><code>ac/&lt;id&gt;/alert</code></td><td>node → twin</td><td><code>checkAlarm()</code></td></tr>
+<tr><td>Notifikasi hasil perintah</td><td><code>ac/&lt;id&gt;/ack</code></td><td>node → twin</td><td><code>ack()</code></td></tr>
+<tr><td>Kartu Remote asli (IR RX)</td><td><code>ac/&lt;id&gt;/ir_rx</code></td><td>node → twin</td><td><code>handleIrRx()</code> (ENABLE_IR_RX = 1)</td></tr>
+</table></details>
+</section>
+</main>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const cl=(v,a,b)=>Math.min(b,Math.max(a,v));
+const S={temp:29.6,rh:62,power:false,mode:"cool",set:24,fan:"auto",rssi:-58,up:0,auto:false,autoOn:28,autoOff:25,brand:"DAIKIN",alarmHigh:32,offset:0,interval:10,live:false,online:true,sensorOk:true,last:0,hist:[],alarmLow:16,rhOffset:0,minToggle:180,src:"-",sig:"",irRx:false,lastTele:0,cfgOk:false,cfgV:null,ir:null,ack:null,pend:0,log:[]};
+const SRC={boot:"Boot (state tersimpan)",mqtt:"Perintah web/MQTT",btn:"Tombol fisik node",auto:"Mode otomatis",remote:"Remote asli (IR RX)"};
+let mq=null,irT=0;
+const T=p=>"ac/"+$("mId").value.trim()+"/"+p;
+function toast(t,bad){const a=$("toast");a.textContent=t;a.hidden=false;a.style.background=bad?"var(--warn)":"var(--accent)";a.style.color=bad?"#fff":"#06211f";clearTimeout(toast.t);toast.t=setTimeout(()=>{a.hidden=true},5000)}
+function logEv(t,bad){S.log.unshift({t:new Date().toLocaleTimeString("id-ID"),m:t,e:!!bad});if(S.log.length>40)S.log.pop();renderLog()}
+function renderLog(){const u=$("log");u.textContent="";S.log.slice(0,12).forEach(x=>{const li=document.createElement("li"),a=document.createElement("span"),b=document.createElement("span");a.className="t";a.textContent=x.t+"  ";if(x.e)b.className="e";b.textContent=x.m;li.append(a,b);u.append(li)})}
+function chk(id,cls,txt){const li=$(id);li.firstElementChild.className="dot "+cls;li.lastElementChild.textContent=txt}
+function renderStatus(){
+  const now=Date.now(),age=S.lastTele?Math.round((now-S.lastTele)/1000):null,lim=Math.max(30,S.interval*3),stale=age!==null&&age>lim;
+  chk("chkBroker",S.live?"ok":"wait",S.live?"Broker MQTT terhubung":"Belum terhubung ke broker (mode simulasi)");
+  chk("chkNode",!S.live?"wait":S.online?"ok":"bad",!S.live?"Node: menunggu koneksi broker":S.online?"Node ESP32 online (status LWT)":"Node ESP32 offline");
+  chk("chkTele",!S.live?"wait":age===null?"wait":stale?"bad":"ok",!S.live?"Telemetri: menunggu koneksi":age===null?"Menunggu telemetri pertama dari node":"Telemetri "+age+" dtk lalu"+(stale?" (data basi, cek node)":""));
+  chk("chkCfg",S.live?(S.cfgOk?"ok":"wait"):"wait",S.live?(S.cfgOk?"Setting node diterima (versi "+S.cfgV+")":"Menunggu setting aktif dari node"):"Setting: menunggu koneksi");
+  chk("chkSensor",!S.live?"wait":S.sensorOk?"ok":"bad",!S.live?"Sensor: menunggu koneksi":S.sensorOk?"Sensor DHT22 normal":"Sensor DHT22 gagal dibaca");
+  chk("chkIr",S.live&&S.irRx?"ok":"wait",S.live?(S.irRx?"IR RX aktif: perubahan dari remote asli terbaca":"IR RX nonaktif: status AC hanya asumsi perintah IR"):"IR RX: menunggu koneksi");
+  const pend=S.pend&&now-S.pend>6000;
+  chk("chkAck",S.pend?(pend?"bad":"wait"):S.ack?(S.ack.ok?"ok":"bad"):"wait",S.pend?(pend?"Tidak ada ack dari node (cek koneksi)":"Menunggu ack dari node..."):S.ack?"Ack terakhir: "+S.ack.msg:"Belum ada perintah dikirim");
+  $("sAge").textContent=S.live?(age===null?"--":age+" dtk"):"simulasi";
+}
+function renderIr(){
+  const b=$("irBody"),u=$("bIrUse");
+  if(!S.ir){b.textContent=S.live?(S.irRx?"Menunggu tombol remote asli ditekan...":"IR RX di node nonaktif. Set ENABLE_IR_RX = 1 di firmware."):"Hubungkan ke node untuk melihat kode remote asli.";u.hidden=true;return}
+  b.textContent="Protokol: "+S.ir.protocol+" ("+S.ir.bits+" bit)\nKode: "+S.ir.code+(S.ir.ac?"\nTerbaca: "+S.ir.ac:"");
+  u.hidden=!S.live||S.ir.protocol===S.brand;u.textContent="Pakai protokol "+S.ir.protocol+" untuk AC ini";
+}
+function renderExtra(){
+  $("sAcL").textContent=S.irRx?"Status AC (sinkron remote asli)":"Status AC (asumsi IR)";
+  $("acNote").textContent=S.irRx?"IR RX aktif di node: perubahan dari remote asli ikut tampil di sini. Suhu berasal dari DHT22.":"Status AC adalah perintah IR terakhir (IR satu arah). Set ENABLE_IR_RX = 1 di firmware agar perubahan dari remote asli ikut terbaca. Suhu berasal dari DHT22.";
+  $("sSrc").textContent=SRC[S.src]||(S.live?"-":"Simulasi");
+  renderIr();
+}
+function push(){S.hist.push(S.temp);if(S.hist.length>90)S.hist.shift()}
+function pulse(){$("beam").classList.add("on");$("nLed").style.fill="var(--accent)";clearTimeout(irT);irT=setTimeout(()=>{$("beam").classList.remove("on");$("nLed").style.fill="var(--muted)"},1400)}
+function apply(c){
+  logEv("Simulasi: "+JSON.stringify(c));
+  if("power"in c){S.power=!!c.power;S.last=Date.now()}
+  if(c.mode)S.mode=c.mode;if("temp"in c)S.set=c.temp;if(c.fan)S.fan=c.fan;
+  pulse();render();
+}
+function send(c){if(S.live&&mq){mq.publish(T("cmd"),JSON.stringify(c));S.pend=Date.now();S.ack=null;logEv("→ cmd "+JSON.stringify(c));toast("Perintah dikirim, menunggu ack node...");renderStatus()}else apply(c)}
+function fillCfg(){const sel=$("cBrand");if(![...sel.options].some(o=>o.value===S.brand)){const o=document.createElement("option");o.value=o.textContent=S.brand;sel.append(o)}sel.value=S.brand;$("cLow").value=S.alarmLow;$("cRh").value=S.rhOffset;$("cMin").value=S.minToggle;$("cOff").value=S.offset;$("cHigh").value=S.alarmHigh;$("cInt").value=S.interval;$("cOn").value=S.autoOn;$("cOffT").value=S.autoOff;$("cAuto").checked=S.auto}
+function render(){
+  const c=$("conn");c.textContent=S.live?(S.online?"MQTT terhubung":"Node offline"):"Mode simulasi";c.className="badge "+(S.live?(S.online?"ok":"bad"):"");
+  const ok=S.sensorOk;
+  $("sTemp").textContent=ok?S.temp.toFixed(1)+"°C":"--";$("sRh").textContent=ok?Math.round(S.rh)+"%":"--";
+  $("sAc").textContent=S.power?"ON · "+S.mode:"OFF";$("sSet").textContent=S.set+"°C";
+  $("sRssi").textContent=S.rssi+" dBm";$("sUp").textContent=Math.floor(S.up/3600)+"j "+Math.floor(S.up%3600/60)+"m";
+  const al=$("alert");const hot=ok&&S.temp>=S.alarmHigh,cold=ok&&S.temp<=S.alarmLow;al.hidden=!(hot||cold||!ok);
+  al.textContent=!ok?"Sensor DHT22 gagal dibaca":hot?"Suhu tinggi: "+S.temp.toFixed(1)+"°C (batas "+S.alarmHigh+"°C)":"Suhu rendah: "+S.temp.toFixed(1)+"°C (batas "+S.alarmLow+"°C)";
+  $("tint").style.fill="hsl("+(210-cl((S.temp-18)/18,0,1)*200)+" 80% 55%)";
+  const col=S.mode==="heat"?"#ff8a3d":S.mode==="cool"?"#4aa8ff":"#9aa7b4";
+  $("plume").style.fill=col;$("plume").style.opacity=S.power?0.16:0;
+  $("flow").style.stroke=col;$("flow").style.opacity=S.power?1:0;
+  $("flow").style.setProperty("--fs",{low:"1.8s",medium:"1.2s",high:"0.7s",auto:"1s"}[S.fan]||"1s");
+  $("flap").style.transform=S.power?"rotate(28deg)":"rotate(0deg)";
+  $("acLed").style.fill=S.power?"var(--ok)":"var(--muted)";
+  $("acSet").textContent=S.power?S.set+"°":"OFF";
+  $("tagT").textContent=ok?S.temp.toFixed(1)+"°C":"--";$("tagH").textContent=ok?Math.round(S.rh)+"% RH":"";
+  $("bPow").textContent=S.power?"Matikan AC":"Nyalakan AC";
+  $("selMode").value=S.mode;$("selFan").value=S.fan;
+  const h=S.hist;if(h.length>1){const mn=Math.min(...h)-0.3,mx=Math.max(...h)+0.3;
+    $("sp").setAttribute("d","M"+h.map((v,i)=>(i/(h.length-1)*300).toFixed(1)+","+(56-(v-mn)/(mx-mn)*52).toFixed(1)).join(" L"));
+    $("spMin").textContent=mn.toFixed(1);$("spMax").textContent=mx.toFixed(1)}
+  renderStatus();renderExtra();
+}
+function sim(){
+  if(S.live){renderStatus();return}
+  const amb=31;let rate=0.004,target=amb;
+  if(S.power&&(S.mode==="cool"||(S.mode==="auto"&&S.temp>S.set))){target=S.set-0.8;rate={low:.008,medium:.012,high:.018,auto:.012}[S.fan]||.012}
+  else if(S.power&&S.mode==="heat"){target=S.set+0.5;rate=.01}
+  else if(S.power){target=amb-1.5}
+  S.temp+=(target-S.temp)*rate+(Math.random()-.5)*0.08;
+  S.rh+=((S.power&&S.mode==="cool"?48:62)-S.rh)*0.01+(Math.random()-.5)*0.2;
+  S.up+=1;
+  if(S.auto&&Date.now()-S.last>20000){
+    if(!S.power&&S.temp>=S.autoOn)apply({power:true});
+    else if(S.power&&S.temp<=S.autoOff)apply({power:false});
+  }
+  push();render();
+}
+function onMsg(k,s){
+  if(k==="status"){S.online=s==="online";logEv("Node "+s,!S.online);render();return}
+  let d;try{d=JSON.parse(s)}catch(e){return}
+  if(k==="telemetry"){
+    const sig=[d.ac_power,d.ac_mode,d.ac_temp,d.ac_fan].join();
+    S.online=true;S.lastTele=Date.now();S.sensorOk=d.sensor_ok!==false;
+    if(d.temp!=null)S.temp=d.temp;if(d.rh!=null)S.rh=d.rh;
+    if("ac_power"in d)S.power=d.ac_power;if(d.ac_mode)S.mode=d.ac_mode;
+    if(d.ac_temp!=null)S.set=d.ac_temp;if(d.ac_fan)S.fan=d.ac_fan;
+    if(d.rssi!=null)S.rssi=d.rssi;if(d.uptime!=null)S.up=d.uptime;
+    if(d.brand)S.brand=d.brand;if("auto"in d)S.auto=d.auto;
+    if("ir_rx"in d)S.irRx=!!d.ir_rx;
+    if(d.src&&(d.src!==S.src||(d.src==="remote"&&sig!==S.sig)))logEv("Status AC dari "+(SRC[d.src]||d.src)+": "+(d.ac_power?"ON":"OFF")+" "+d.ac_mode+" "+d.ac_temp+"°C fan "+d.ac_fan);
+    if(d.src)S.src=d.src;S.sig=sig;
+    if(S.sensorOk)push();render();
+  }else if(k==="alert"){logEv("Alert: "+d.type+(d.value!=null?" ("+d.value+")":""),1);toast("Alert: "+d.type+(d.value!=null?" ("+d.value+")":""),1)}
+  else if(k==="ack"){
+    S.pend=0;S.ack={ok:!!d.ok,msg:String(d.msg)};logEv("← ack: "+d.msg,!d.ok);
+    if(d.msg!=="telemetri dikirim"){toast(d.msg,!d.ok);if(d.ok&&/IR terkirim|auto:/.test(d.msg))pulse()}
+    renderStatus();
+  }
+  else if(k==="ir_rx"){S.ir=d;logEv("Remote asli: "+d.protocol+" "+d.bits+" bit"+(d.ac?" - "+d.ac:""));renderIr()}
+  else if(k==="config/state"){S.alarmHigh=d.alarm_high;S.alarmLow=d.alarm_low;S.offset=d.temp_offset;S.rhOffset=d.rh_offset;S.interval=d.interval;S.autoOn=d.auto_on;S.autoOff=d.auto_off;S.auto=d.auto_enabled;S.brand=d.ac_brand;S.minToggle=d.min_toggle;S.cfgV=d.version;S.cfgOk=true;fillCfg();logEv("Setting node v"+d.version+" diterima");render()}
+}
+$("bPow").onclick=()=>send({power:!S.power});
+$("bMinus").onclick=()=>send({temp:cl(S.set-1,16,30)});
+$("bPlus").onclick=()=>send({temp:cl(S.set+1,16,30)});
+$("selMode").onchange=e=>send({mode:e.target.value});
+$("selFan").onchange=e=>send({fan:e.target.value});
+$("bCfg").onclick=()=>{
+  const o={ac_brand:$("cBrand").value,temp_offset:+$("cOff").value,rh_offset:+$("cRh").value,alarm_high:+$("cHigh").value,alarm_low:+$("cLow").value,interval:+$("cInt").value,auto_enabled:$("cAuto").checked,auto_on:+$("cOn").value,auto_off:+$("cOffT").value,min_toggle:+$("cMin").value};
+  if(o.auto_off>=o.auto_on){toast("Auto OFF harus lebih kecil dari Auto ON",1);return}
+  if(o.alarm_low>=o.alarm_high){toast("Alarm rendah harus lebih kecil dari alarm tinggi",1);return}
+  if(S.live&&mq){mq.publish(T("config/set"),JSON.stringify(o));S.pend=Date.now();S.ack=null;logEv("→ config/set dikirim");toast("Setting dikirim, menunggu ack node...");renderStatus()}
+  else{S.brand=o.ac_brand;S.offset=o.temp_offset;S.rhOffset=o.rh_offset;S.alarmHigh=o.alarm_high;S.alarmLow=o.alarm_low;S.interval=o.interval;S.auto=o.auto_enabled;S.autoOn=o.auto_on;S.autoOff=o.auto_off;S.minToggle=o.min_toggle;logEv("Simulasi: setting diterapkan");toast("Setting diterapkan (simulasi)");render()}
+};
+$("bIrUse").onclick=()=>{if(S.live&&mq&&S.ir&&S.ir.protocol){mq.publish(T("config/set"),JSON.stringify({ac_brand:S.ir.protocol}));S.pend=Date.now();S.ack=null;logEv("→ config/set ac_brand="+S.ir.protocol);renderStatus()}};
+$("bConn").onclick=()=>{
+  if(mq){mq.end(true);mq=null;S.live=false;S.cfgOk=false;S.lastTele=0;S.src="-";logEv("Koneksi diputus");$("bConn").textContent="Hubungkan";$("mMsg").textContent="Terputus";render();return}
+  if(typeof mqtt==="undefined"){$("mMsg").textContent="Library MQTT tidak termuat (perlu internet).";return}
+  try{localStorage.setItem("twin",JSON.stringify({u:$("mUrl").value,n:$("mUser").value,i:$("mId").value}))}catch(e){}
+  if(location.protocol==="https:"&&/^ws:/i.test($("mUrl").value.trim())){$("mMsg").textContent="Halaman https memblokir ws://. Buka file ini secara lokal/http, atau pakai wss://";return}
+  $("mMsg").textContent="Menghubungkan...";
+  mq=mqtt.connect($("mUrl").value.trim(),{username:$("mUser").value||undefined,password:$("mPass").value||undefined,reconnectPeriod:3000,clientId:"twin-"+Math.random().toString(16).slice(2,8)});
+  mq.on("connect",()=>{S.live=true;S.hist=[];$("mMsg").textContent="Terhubung";$("bConn").textContent="Putuskan";["telemetry","status","alert","ack","config/state","ir_rx"].forEach(p=>mq.subscribe(T(p)));mq.publish(T("cmd"),'{"get":true}');logEv("Terhubung ke broker, memantau "+T("*"));render()});
+  mq.on("error",e=>{$("mMsg").textContent="Gagal: "+e.message;logEv("Koneksi gagal: "+e.message,1)});
+  mq.on("close",()=>{if(S.live){S.online=false;render()}});
+  mq.on("message",(t,p)=>onMsg(t.split("/").slice(2).join("/"),p.toString()));
+};
+try{const v=JSON.parse(localStorage.getItem("twin")||"{}");if(v.u)$("mUrl").value=v.u;if(v.n)$("mUser").value=v.n;if(v.i)$("mId").value=v.i}catch(e){}
+for(let i=0;i<60;i++){S.hist.push(29.6+(Math.random()-.5)*0.4)}
+fillCfg();renderLog();render();setInterval(sim,1000);
+</script>
+</body>
+</html>
